@@ -28,16 +28,16 @@ class GameFragment : Fragment(R.layout.game_fragment) {
 
         gameStateUpdates = lifecycleScope.launchWhenStarted {
             viewModel.gameState.collect { state ->
-                when (state.status) {
-                    is GameStatus.Complete -> {
+                when (state) {
+                    is GameState.Complete -> {
                         findNavController().navigate(GameFragmentDirections.actionGameToScore(state.score))
                     }
-                    else -> {
+                    is GameState.InProgress -> {
                         viewBinding.wordText.text = state.word
                         viewBinding.scoreText.text = state.score.toString()
-                        viewBinding.correctButton.setOnClickListener { viewModel.handleGameAction(state, GameAction.CorrectWord) }
-                        viewBinding.skipButton.setOnClickListener { viewModel.handleGameAction(state, GameAction.SkipWord) }
-                        viewBinding.endGameButton.setOnClickListener { viewModel.handleGameAction(state, GameAction.EndGame) }
+                        viewBinding.correctButton.setOnClickListener { viewModel.handleGameAction(GameAction.CorrectWord, state) }
+                        viewBinding.skipButton.setOnClickListener { viewModel.handleGameAction(GameAction.SkipWord, state) }
+                        viewBinding.endGameButton.setOnClickListener { viewModel.handleGameAction(GameAction.EndGame, state) }
                     }
                 }
             }

@@ -8,10 +8,10 @@ import kotlinx.coroutines.flow.StateFlow
 @ExperimentalCoroutinesApi
 class GameViewModel : ViewModel() {
 
-    private val _gameState = MutableStateFlow<GameState>(onNewGame())
+    private val _gameState = MutableStateFlow(onNewGame())
     val gameState: StateFlow<GameState> = _gameState
 
-    fun handleGameAction(state: GameState, action: GameAction) {
+    fun handleGameAction(action: GameAction, state: GameState) {
         when (action) {
             is GameAction.NewGame -> _gameState.value = onNewGame()
             is GameAction.SkipWord -> _gameState.value = onSkipWord(state)
@@ -25,21 +25,44 @@ class GameViewModel : ViewModel() {
         val word = initialWordList[0]
         val remainingWordList = initialWordList.slice(1 until initialWordList.count())
         val score = 0
-        return GameState(GameStatus.InProgress, remainingWordList, word, score)
+        return GameState.InProgress(remainingWordList, word, score)
     }
 
     private fun onSkipWord(state: GameState): GameState {
-        val newWordState = getNextWord(state)
-        return GameState(newWordState.status, newWordState.wordList, newWordState.word, newWordState.score - 1)
+        when (state) {
+            is GameState.InProgress -> {
+                if (state.wordList.count() == 1) return GameState.Complete(state.score)
+                val wordList = getUpdatedWordList(state)
+                val word = getNextWord(state)
+                val score = state.score - 1
+                return GameState.InProgress(wordList, word, score)
+            }
+            is GameState.Complete -> {
+                return state
+            }
+        }
     }
 
     private fun onCorrectWord(state: GameState): GameState {
-        val newWordState = getNextWord(state)
-        return GameState(newWordState.status, newWordState.wordList, newWordState.word, newWordState.score + 1)
+        when (state) {
+            is GameState.InProgress -> {
+                if (state.wordList.count() == 1) return GameState.Complete(state.score)
+                val wordList = getUpdatedWordList(state)
+                val word = getNextWord(state)
+                val score = state.score + 1
+                return GameState.InProgress(wordList, word, score)
+            }
+            is GameState.Complete -> {
+                return state
+            }
+        }
     }
 
     private fun onEndGame(state: GameState): GameState {
-        return GameState(GameStatus.Complete, emptyList(), "", state.score)
+        return when (state) {
+            is GameState.InProgress -> GameState.Complete(state.score)
+            is GameState.Complete -> state
+        }
     }
 
     /**
@@ -73,12 +96,11 @@ class GameViewModel : ViewModel() {
         return wordList
     }
 
-    private fun getNextWord(state: GameState): GameState {
-        if (state.wordList.count() == 1) {
-            return GameState(GameStatus.Complete, emptyList(), "", state.score)
-        }
-        val word = state.wordList[0]
-        val remainingWordList = state.wordList.slice(1 until state.wordList.count())
-        return GameState(GameStatus.InProgress, remainingWordList, word, state.score)
+    private fun getNextWord(state: GameState.InProgress): String {
+        return state.wordList[0]
+    }
+
+    private fun getUpdatedWordList(state: GameState.InProgress): List<String> {
+        return state.wordList.slice(1 until state.wordList.count())
     }
 }
